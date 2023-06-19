@@ -1,5 +1,5 @@
 from torch.utils.tensorboard import SummaryWriter
-import logging
+import logging  # 日志模块
 from torch.utils.data import DataLoader
 from multiprocessing import Pool
 from pathlib import Path

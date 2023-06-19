@@ -1,5 +1,5 @@
 # Use distributed data parallel
-CUDA_VISIBLE_DEVICES=1,4,6,7 python lightning_pretrain.py \
+python lightning_pretrain.py \
     --model_name_or_path allenai/longformer-base-4096 \
     --train_file pretrain_data/train.json \
     --dev_file pretrain_data/dev.json \
