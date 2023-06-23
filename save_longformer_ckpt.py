@@ -3,6 +3,7 @@ import os
 from transformers import LongformerForMaskedLM
 from recformer import RecformerConfig, RecformerForPretraining
 
+
 longformer = LongformerForMaskedLM.from_pretrained('allenai/longformer-base-4096')
 
 config = RecformerConfig.from_pretrained('allenai/longformer-base-4096')
@@ -20,7 +21,7 @@ for name, param in longformer_state_dict.items():
         continue
     else:
         try:
-            if not recformer_state_dict[name].size()==param.size():
+            if not recformer_state_dict[name].size() == param.size():
                 print(name)
                 print(recformer_state_dict[name].size())
                 print(param.size())

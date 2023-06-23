@@ -4,13 +4,14 @@ import pytorch_lightning as pl
 from transformers import get_linear_schedule_with_warmup
 from torch.optim import AdamW
 
+
 class LitWrapper(pl.LightningModule):
-    def __init__(self, 
-                model: nn.Module,
-                learning_rate: float = 5e-5,
-                warmup_steps: int = 0,
-                weight_decay: float = 0.0
-                ):
+    def __init__(self,
+                 model: nn.Module,
+                 learning_rate: float = 5e-5,
+                 warmup_steps: int = 0,
+                 weight_decay: float = 0.0
+                 ):
         super().__init__()
         
         self.hparams.learning_rate = learning_rate

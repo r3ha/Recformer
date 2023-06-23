@@ -247,8 +247,9 @@ def main():
                             collate_fn=test_data.collate_fn)
 
     model = RecformerForSeqRec(config)
-    pretrain_ckpt = torch.load(args.pretrain_ckpt)
-    model.load_state_dict(pretrain_ckpt, strict=False)
+    # pretrain_ckpt = torch.load(args.pretrain_ckpt)
+    # model.load_state_dict(pretrain_ckpt, strict=False)
+    model.load_state_dict(torch.load('pretrain_ckpt/recformer_seqrec_ckpt.bin'), strict=False)
     model.to(args.device)
 
     if args.fix_word_embedding:

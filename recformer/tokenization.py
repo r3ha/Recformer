@@ -1,6 +1,7 @@
 import torch
 from transformers import LongformerTokenizer
 
+
 class RecformerTokenizer(LongformerTokenizer):
     @classmethod
     def from_pretrained(cls, pretrained_model_name_or_path, config=None):
@@ -39,6 +40,7 @@ class RecformerTokenizer(LongformerTokenizer):
 
         input_ids = []
         token_type_ids = []
+
         item = list(item.items())[:self.config.max_attr_num]  # truncate attribute number
 
         for attribute in item:
@@ -47,48 +49,46 @@ class RecformerTokenizer(LongformerTokenizer):
 
             name_tokens = self.item_tokenize(attr_name)
             value_tokens = self.item_tokenize(attr_value)
-
             attr_tokens = name_tokens + value_tokens
-            attr_tokens = attr_tokens[:self.config.max_attr_length]
+            # attr_tokens = [101, 1234, 102, 101, 5678, 12345, 102]
+            attr_tokens = attr_tokens[:self.config.max_attr_length]  # NOTE: whatif truncate the tokens to incomplete?
 
             input_ids += attr_tokens
             
             attr_type_ids = [1] * len(name_tokens)
             attr_type_ids += [2] * len(value_tokens)
+            # attr_type_ids = [1, 1, 1, 2, 2, 2, 2]
             attr_type_ids = attr_type_ids[:self.config.max_attr_length]
+
             token_type_ids += attr_type_ids
 
         return input_ids, token_type_ids
 
-
     def encode(self, items, encode_item=True):
         '''
-        Encode a sequence of items.
+        Encode a sequence of items. -> Using the author's methods in the paper
         the order of items:  [past...present]
         return: [present...past]
         '''
         items = items[::-1]  # reverse items order
-        items = items[:self.config.max_item_embeddings - 1] # truncate the number of items, -1 for <s>
+        items = items[:self.config.max_item_embeddings - 1]  # truncate the number of items, -1 for <s>
+        # 添加起始位置
+        input_ids = [self.bos_token_id]  # line A [0]: Token Emb.
+        token_type_ids = [0]  # line C [0]: Token Type Emb.
+        item_position_ids = [0]  # line D [0]: Item Pos Emb.
 
-        input_ids = [self.bos_token_id]
-        item_position_ids = [0]
-        token_type_ids = [0]
-
-        for item_idx, item in enumerate(items):
+        for item_idx, item in enumerate(items):  # -> 生成 (i, items[i])
 
             if encode_item:
-            
                 item_input_ids, item_token_type_ids = self.encode_item(item)
-
             else:
-
+                # item is encoded already, only need to unpack
                 item_input_ids, item_token_type_ids = item
 
-
-            input_ids += item_input_ids
-            token_type_ids += item_token_type_ids
-
-            item_position_ids += [item_idx+1] * len(item_input_ids) # item_idx + 1 make idx starts from 1 (0 for <s>)
+            input_ids += item_input_ids  # line A [1:]
+            token_type_ids += item_token_type_ids  # line C [1:]
+            # item_idx + 1 make idx starts from 1 (0 for <s>)
+            item_position_ids += [item_idx+1] * len(item_input_ids)  # line D [1:]
 
         input_ids = input_ids[:self.config.max_token_num]
         item_position_ids = item_position_ids[:self.config.max_token_num]
@@ -111,29 +111,32 @@ class RecformerTokenizer(LongformerTokenizer):
         if pad_to_max:
             max_length = self.config.max_token_num
         else:
+            # find the max length of token_seq in a batch_data
             max_length = max([len(items["input_ids"]) for items in item_batch])
-        
 
         batch_input_ids = []
-        batch_item_position_ids = []
         batch_token_type_ids = []
+        batch_item_position_ids = []
+
         batch_attention_mask = []
         batch_global_attention_mask = []
-
 
         for items in item_batch:
 
             input_ids = items["input_ids"]
-            item_position_ids = items["item_position_ids"]
             token_type_ids = items["token_type_ids"]
+            item_position_ids = items["item_position_ids"]
+
             attention_mask = items["attention_mask"]
             global_attention_mask = items["global_attention_mask"]
 
             length_to_pad = max_length - len(input_ids)
 
             input_ids += [self.pad_token_id] * length_to_pad
+            token_type_ids += [3] * length_to_pad  # -> 3 means <pad> type
             item_position_ids += [self.config.max_item_embeddings - 1] * length_to_pad
-            token_type_ids += [3] * length_to_pad
+            # (self.config.max_item_embeddings - 1) means the last position number
+
             attention_mask += [0] * length_to_pad
             global_attention_mask += [0] * length_to_pad
 
@@ -151,7 +154,6 @@ class RecformerTokenizer(LongformerTokenizer):
             "global_attention_mask": batch_global_attention_mask
         }
 
-
     def batch_encode(self, item_batch, encode_item=True, pad_to_max=False):
 
         item_batch = [self.encode(items, encode_item) for items in item_batch]
@@ -159,11 +161,9 @@ class RecformerTokenizer(LongformerTokenizer):
         return self.padding(item_batch, pad_to_max)
         
 
-
 if __name__ == "__main__":
 
     from models import RecformerConfig
-
 
     config = RecformerConfig.from_pretrained("allenai/longformer-base-4096")
     tokenizer = RecformerTokenizer.from_pretrained("allenai/longformer-base-4096", config=config)

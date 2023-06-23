@@ -1,4 +1,6 @@
 # Use distributed data parallel
+# Note：GPU_number(4/1) batch_size(16/8)
+# CUDA_VISIBLE_DEVICES=1,4,6,7 python lightning_pretrain.py \
 python lightning_pretrain.py \
     --model_name_or_path allenai/longformer-base-4096 \
     --train_file pretrain_data/train.json \
@@ -9,9 +11,9 @@ python lightning_pretrain.py \
     --gradient_accumulation_steps 8 \
     --preprocessing_num_workers 8 \
     --dataloader_num_workers 8  \
-    --batch_size 16 \
+    --batch_size 8 \
     --learning_rate 5e-5 \
     --temp 0.05 \
-    --device 4 \
+    --device -1 \
     --fp16 \
     --fix_word_embedding

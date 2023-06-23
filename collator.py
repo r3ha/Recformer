@@ -14,7 +14,11 @@ class PretrainDataCollatorWithPadding:
     tokenized_items: Dict
     mlm_probability: float
 
-    def __call__(self, batch_item_ids: List[Dict[str, Union[List[int], List[List[int]], torch.Tensor]]]) -> Dict[str, torch.Tensor]:
+    def __call__(self,
+                 batch_item_ids: List[
+                     Dict[str, Union[List[int], List[List[int]], torch.Tensor]]
+                 ]  # -> [{'items': [item_1, item_2, ..., item_m]}, ... , {...}]
+                 ) -> Dict[str, torch.Tensor]:
 
         '''
         features: A batch of list of item ids
@@ -30,11 +34,13 @@ class PretrainDataCollatorWithPadding:
         '''
         
         batch_item_seq_a, batch_item_seq_b = self.sample_pairs(batch_item_ids)
+
         batch_feature_a = self.extract_features(batch_item_seq_a)
         batch_feature_b = self.extract_features(batch_item_seq_b)
 
         batch_encode_features_a = self.encode_features(batch_feature_a)
         batch_encode_features_b = self.encode_features(batch_feature_b)
+
         batch_a = self.tokenizer.padding(batch_encode_features_a, pad_to_max=False)
         batch_b = self.tokenizer.padding(batch_encode_features_b, pad_to_max=False)
 
@@ -58,15 +64,14 @@ class PretrainDataCollatorWithPadding:
 
         for item_ids in batch_item_ids:
 
-            item_ids = item_ids['items']
+            item_ids = item_ids['items']  # pick up [item_1, item_2, ..., item_m]
             item_seq_len = len(item_ids)
-            start = (item_seq_len-1) // 2
-            target_pos = random.randint(start, item_seq_len-1)
+            start = (item_seq_len - 1) // 2
+            target_pos = random.randint(start, item_seq_len - 1)
             batch_item_seq_a.append(item_ids[:target_pos])
             batch_item_seq_b.append([item_ids[target_pos]])
 
         return batch_item_seq_a, batch_item_seq_b
-
 
     def extract_features(self, batch_item_seq):
 
@@ -75,6 +80,7 @@ class PretrainDataCollatorWithPadding:
         for item_seq in batch_item_seq:
             feature_seq = []
             for item in item_seq:
+                # transfer [item_i, ...] -> [[input_ids, token_type_ids]_i, ...] by tokenized_items which is a dict
                 input_ids, token_type_ids = self.tokenized_items[item]
                 feature_seq.append([input_ids, token_type_ids])
             features.append(feature_seq)
@@ -87,13 +93,15 @@ class PretrainDataCollatorWithPadding:
         for feature in batch_feature:
             features.append(self.tokenizer.encode(feature, encode_item=False))
 
+        # return a batch of dict which contains under
+        # [{"input_ids", "item_position_ids", "token_type_ids", "attention_mask", "global_attention_mask"},..., {...}]
         return features
 
     def mask_mlm(self, flat_features):
 
-        input_ids = [e["input_ids"] for e in flat_features]
+        batch_input_ids = [e["input_ids"] for e in flat_features]  # e -> example
 
-        batch_input = self._collate_batch(input_ids)
+        batch_input = self._collate_batch(batch_input_ids)
 
         mask_labels = []
         for e in flat_features:
@@ -163,13 +171,12 @@ class PretrainDataCollatorWithPadding:
         # obtained from:
         # https://github.com/huggingface/transformers/blob/5f25a5f367497278bf19c9994569db43f96d5278/transformers/tokenization_bert.py#L489
         cp = ord(char)
-        if (cp >= 33 and cp <= 47) or (cp >= 58 and cp <= 64) or (cp >= 91 and cp <= 96) or (cp >= 123 and cp <= 126):
+        if (33 <= cp <= 47) or (58 <= cp <= 64) or (91 <= cp <= 96) or (123 <= cp <= 126):
             return True
         cat = unicodedata.category(char)
         if cat.startswith("P"):
             return True
         return False
-
 
     def mask_tokens(self, inputs: torch.Tensor, mask_labels: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """
@@ -179,10 +186,12 @@ class PretrainDataCollatorWithPadding:
 
         if self.tokenizer.mask_token is None:
             raise ValueError(
-                "This tokenizer does not have a mask token which is necessary for masked language modeling. Remove the --mlm flag if you want to use this tokenizer."
+                "This tokenizer does not have a mask token which is necessary for masked language modeling. "
+                "Remove the --mlm flag if you want to use this tokenizer."
             )
         labels = inputs.clone()
-        # We sample a few tokens in each sequence for masked-LM training (with probability args.mlm_probability defaults to 0.15 in Bert/RoBERTa)
+        # We sample a few tokens in each sequence for masked-LM training
+        # (with probability args.mlm_probability defaults to 0.15 in Bert/RoBERTa)
 
         probability_matrix = mask_labels
 
@@ -208,7 +217,6 @@ class PretrainDataCollatorWithPadding:
 
         # The rest of the time (10% of the time) we keep the masked input tokens unchanged
         return inputs, labels
-
 
     def _collate_batch(self, examples, pad_to_multiple_of: Optional[int] = None):
         """Collate `examples` into a batch, using the information in `tokenizer` for padding if necessary."""
@@ -236,9 +244,9 @@ class PretrainDataCollatorWithPadding:
         result = examples[0].new_full([len(examples), max_length], self.tokenizer.pad_token_id)
         for i, example in enumerate(examples):
             if self.tokenizer.padding_side == "right":
-                result[i, : example.shape[0]] = example
+                result[i, :example.shape[0]] = example
             else:
-                result[i, -example.shape[0] :] = example
+                result[i, -example.shape[0]:] = example
         return result
 
 
@@ -248,7 +256,11 @@ class FinetuneDataCollatorWithPadding:
     tokenizer: RecformerTokenizer
     tokenized_items: Dict
 
-    def __call__(self, batch_item_ids: List[Dict[str, Union[List[int], List[List[int]], torch.Tensor]]]) -> Dict[str, torch.Tensor]:
+    def __call__(self,
+                 batch_item_ids: List[
+                     Dict[str, Union[List[int], List[List[int]], torch.Tensor]]
+                 ]
+                 ) -> Dict[str, torch.Tensor]:
 
         '''
         features: A batch of list of item ids
@@ -290,7 +302,6 @@ class FinetuneDataCollatorWithPadding:
 
         return batch_item_seq, labels
 
-
     def extract_features(self, batch_item_seq):
 
         features = []
@@ -319,7 +330,11 @@ class EvalDataCollatorWithPadding:
     tokenizer: RecformerTokenizer
     tokenized_items: Dict
 
-    def __call__(self, batch_data: List[Dict[str, Union[int, List[int], List[List[int]], torch.Tensor]]]) -> Dict[str, torch.Tensor]:
+    def __call__(self,
+                 batch_data: List[
+                     Dict[str, Union[int, List[int], List[List[int]], torch.Tensor]]
+                 ]
+                 ) -> Dict[str, torch.Tensor]:
 
         '''
         features: A batch of list of item ids
@@ -360,7 +375,6 @@ class EvalDataCollatorWithPadding:
             labels.append(label)
 
         return batch_item_seq, labels
-
 
     def extract_features(self, batch_item_seq):
 

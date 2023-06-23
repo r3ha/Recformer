@@ -21,22 +21,21 @@ logger = logging.getLogger(__name__)
 
 class RecformerConfig(LongformerConfig):
 
-    def __init__(self, 
-                attention_window: Union[List[int], int] = 64, 
-                sep_token_id: int = 2,
-                token_type_size: int = 4, # <s>, key, value, <pad>
-                max_token_num: int = 2048,
-                max_item_embeddings: int = 32, # 1 for <s>, 50 for items
-                max_attr_num: int = 12,
-                max_attr_length: int = 8,
-                pooler_type: str = 'cls',
-                temp: float = 0.05,
-                mlm_weight: float = 0.1,
-                item_num: int = 0,
-                finetune_negative_sample_size: int = 0,
-                **kwargs):
+    def __init__(self,  # Implementation Details:
+                 attention_window: Union[List[int], int] = 64,  # The size of the local attention windows in Longformer
+                 sep_token_id: int = 2,
+                 token_type_size: int = 4,  # <s>, key, value, <pad>
+                 max_token_num: int = 2048,  # The max num of tokens for each interaction sequence
+                 max_item_embeddings: int = 32,  # 1 for <s>, 50 for items  # The max num of tokens for each attribute
+                 max_attr_num: int = 12,
+                 max_attr_length: int = 8,
+                 pooler_type: str = 'cls',
+                 temp: float = 0.05,
+                 mlm_weight: float = 0.1,
+                 item_num: int = 0,
+                 finetune_negative_sample_size: int = 0,
+                 **kwargs):
         super().__init__(attention_window, sep_token_id, **kwargs)
-
 
         self.token_type_size = token_type_size
         self.max_token_num = max_token_num
@@ -328,7 +327,8 @@ class RecformerModel(LongformerPreTrainedModel):
         ]
 
         embedding_output = self.embeddings(
-            input_ids=input_ids, position_ids=position_ids, item_position_ids=item_position_ids, token_type_ids=token_type_ids, inputs_embeds=inputs_embeds
+            input_ids=input_ids, position_ids=position_ids,item_position_ids=item_position_ids,
+            token_type_ids=token_type_ids, inputs_embeds=inputs_embeds
         )
 
         encoder_outputs = self.encoder(

@@ -18,5 +18,5 @@ class ClickDataset(Dataset):
         return self.dataset[index]
 
     def collate_fn(self, data):
-
+        # A list of a dict form of user interaction history [{'items': [item_1, item_2, ..., item_m]}, ... , {...}]
         return self.collator([{'items': line} for line in data])
